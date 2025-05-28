@@ -206,7 +206,7 @@ const Chat = () => {
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
-    const WS_URL = `ws://pranjal-chat.up.railway.app/ws/chat/geitpl/?token=${token}`;
+    const WS_URL = `wss://pranjal-chat.up.railway.app/ws/chat/geitpl/?token=${token}`;
     ws.current = new WebSocket(WS_URL);
 
     ws.current.onopen = () => {
