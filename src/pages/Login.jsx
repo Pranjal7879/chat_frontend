@@ -62,7 +62,7 @@ const Login = () => {
 
     try {
       const response = await axios.post(
-        "http://localhost:8000/api/login/",
+        "https://pranjal-chat.up.railway.app/api/login/",
         formData,
         {
           headers: {

@@ -110,7 +110,7 @@ const Signup = () => {
     e.preventDefault();
     try {
       const response = await axios.post(
-        "http://localhost:8000/api/createacc/",
+        "https://pranjal-chat.up.railway.app/api/createacc/",
         formData
       );
       if (response.status === 201) {
