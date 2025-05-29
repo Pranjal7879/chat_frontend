@@ -191,8 +191,6 @@
 
 
 
-
-
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -253,14 +251,7 @@ const Chat = () => {
       message: input,
     };
     ws.current.send(JSON.stringify(msg));
-    setMessages((prev) => ({
-      ...prev,
-      [selectedUser]: [
-        ...(prev[selectedUser] || []),
-        { from: "You", message: input, to: selectedUser },
-      ],
-    }));
-    setInput("");
+    setInput(""); // Only reset input, do not update messages locally
   };
 
   const handleLogout = () => {
