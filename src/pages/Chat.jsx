@@ -1,7 +1,6 @@
-// import React, { useEffect, useRef, useState } from "react";
-// import { useNavigate } from "react-router-dom"; 
 
-// const WS_URL = "ws://localhost:8000/ws/chat/geitpl";
+// import React, { useEffect, useRef, useState } from "react";
+// import { useNavigate } from "react-router-dom";
 
 // const Chat = () => {
 //   const [users, setUsers] = useState([]);
@@ -9,9 +8,11 @@
 //   const [messages, setMessages] = useState({});
 //   const [input, setInput] = useState("");
 //   const ws = useRef(null);
-//   const navigate = useNavigate(); 
+//   const navigate = useNavigate();
 
 //   useEffect(() => {
+//     const token = localStorage.getItem("accessToken");
+//     const WS_URL = `wss://pranjal-chat.up.railway.app/ws/chat/geitpl/?token=${token}`;
 //     ws.current = new WebSocket(WS_URL);
 
 //     ws.current.onopen = () => {
@@ -58,13 +59,6 @@
 //       message: input,
 //     };
 //     ws.current.send(JSON.stringify(msg));
-//     setMessages((prev) => ({
-//       ...prev,
-//       [selectedUser]: [
-//         ...(prev[selectedUser] || []),
-//         { from: "You", message: input, to: selectedUser },
-//       ],
-//     }));
 //     setInput("");
 //   };
 
@@ -177,20 +171,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -204,134 +184,117 @@ const Chat = () => {
 
   useEffect(() => {
     const token = localStorage.getItem("accessToken");
+
+    fetch("https://pranjal-chat.up.railway.app/api/users/", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setUsers(data);
+        if (!selectedUser && data.length > 0) {
+          setSelectedUser(data[0].username);
+        }
+      });
+
     const WS_URL = `wss://pranjal-chat.up.railway.app/ws/chat/geitpl/?token=${token}`;
     ws.current = new WebSocket(WS_URL);
 
-    ws.current.onopen = () => {
-      console.log("WebSocket connected");
-    };
-
     ws.current.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-
-        if (data.type === "users") {
-          setUsers(data.users);
-          if (!selectedUser && data.users.length > 0) {
-            setSelectedUser(data.users[0]);
-          }
-        } else if (data.type === "chat") {
-          setMessages((prev) => {
-            const user = data.from === "You" ? data.to : data.from;
-            return {
-              ...prev,
-              [user]: [...(prev[user] || []), data],
-            };
-          });
-        }
-      } catch (err) {
-        console.log("Received non-JSON message:", e.data);
+      const data = JSON.parse(e.data);
+      if (data.type === "chat") {
+        const user = data.from === "You" ? data.to : data.from;
+        setMessages((prev) => ({
+          ...prev,
+          [user]: [...(prev[user] || []), data],
+        }));
       }
     };
 
-    ws.current.onclose = () => {
-      console.log("WebSocket disconnected");
-    };
-
-    return () => {
-      ws.current.close();
-    };
+    return () => ws.current.close();
   }, []);
 
   const sendMessage = () => {
     if (!input.trim() || !selectedUser) return;
-    const msg = {
-      type: "chat",
-      to: selectedUser,
-      message: input,
-    };
-    ws.current.send(JSON.stringify(msg));
-    setInput(""); // Only reset input, do not update messages locally
+    ws.current.send(
+      JSON.stringify({
+        type: "chat",
+        to: selectedUser,
+        message: input,
+      })
+    );
+    setInput("");
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
+    localStorage.clear();
     navigate("/login");
   };
 
   return (
     <div className="flex flex-col items-center justify-center h-screen bg-gray-100">
       <div className="w-[700px] mb-4 text-right pr-2">
-        <button
-          onClick={handleLogout}
-          className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
-        >
+        <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded">
           Logout
         </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-lg flex w-[700px] h-[400px] overflow-hidden">
-        <div className="w-1/3 border-r border-gray-200 p-4">
-          <h2 className="font-bold mb-4">Users in Room</h2>
+        <div className="w-1/3 border-r p-4">
+          <h2 className="font-bold mb-4">All Users</h2>
           <ul>
             {users.map((user) => (
               <li
-                key={user}
-                className={`p-2 rounded cursor-pointer mb-1 ${
-                  selectedUser === user
+                key={user.username}
+                className={`p-2 flex items-center justify-between rounded cursor-pointer mb-1 ${
+                  selectedUser === user.username
                     ? "bg-gray-200 font-semibold"
                     : "hover:bg-gray-100"
                 }`}
-                onClick={() => setSelectedUser(user)}
+                onClick={() => setSelectedUser(user.username)}
               >
-                {user}
+                <span>{user.name || user.username}</span>
+                {user.is_online && <span className="h-2 w-2 bg-green-500 rounded-full" />}
               </li>
             ))}
           </ul>
         </div>
 
         <div className="flex-1 flex flex-col">
-          <div className="border-b border-gray-200 p-4 text-center font-bold">
+          <div className="border-b p-4 text-center font-bold">
             Chat with {selectedUser || "—"}
           </div>
-          <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-3">
+          <div className="flex-1 p-4 overflow-y-auto">
             {(messages[selectedUser] || []).map((msg, idx) => (
               <div
                 key={idx}
-                className={`flex ${
-                  msg.from === "You" ? "justify-end" : "justify-start"
+                className={`mb-2 ${
+                  msg.from === "You" ? "text-right" : "text-left"
                 }`}
               >
-                <div
-                  className={`px-4 py-2 rounded-lg ${
+                <span
+                  className={`inline-block px-4 py-2 rounded ${
                     msg.from === "You"
                       ? "bg-blue-500 text-white"
-                      : "bg-gray-100 text-gray-900"
+                      : "bg-gray-200 text-black"
                   }`}
                 >
                   {msg.message}
-                </div>
+                </span>
               </div>
             ))}
           </div>
-
-          <div className="p-3 border-t border-gray-200 flex">
+          <div className="p-3 border-t flex">
             <input
               type="text"
-              className="flex-1 border rounded px-3 py-2 mr-2 focus:outline-none focus:ring"
-              placeholder="Type a message..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              disabled={!selectedUser}
+              placeholder="Type a message..."
+              className="flex-1 border rounded px-3 py-2 mr-2"
             />
-
-            <button
-              className="bg-gray-200 px-4 py-2 rounded font-semibold disabled:opacity-50"
-              onClick={sendMessage}
-              disabled={!input.trim() || !selectedUser}
-            >
+            <button onClick={sendMessage} className="bg-blue-500 text-white px-4 py-2 rounded">
               Send
             </button>
           </div>
